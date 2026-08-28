@@ -221,7 +221,7 @@ const reps = ["","5","6","7","8","9","10","11","12","13","14","15","16","18","20
 const weightValues = ["","2.5","5","6.25","7.5","10","12","12.5","14","15","17","17.5","19","20","22.5","25","27.5","30","32.5","35","40","45","50"];
 const levels = ["","المستوى 1","المستوى 2","المستوى 3","المستوى 4","المستوى 5","المستوى 6","المستوى 7","المستوى 8","المستوى 9","المستوى 10"];
 const walkMinutes = ["","5","8","10","12","15","20","25","30","35","40","45","50","60"];
-const speeds = ["","2.5","3","3.5","4","4.5","5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12"];
+const speeds = ["","2.5","3","3.5","4","4.5","5","5.5","6","6.5","7"];
 const inclines = ["","0","0.5","1","1.5","2","2.5","3","4","5","6","8","10","12"];
 const distances = ["","0.5","1","1.5","2","2.5","3","3.5","4","5","6","7","8","10"];
 const flexMinutes = ["","5","7","10","12","15","20"];
@@ -510,33 +510,36 @@ function createPng(){
 }
 
 document.getElementById("exportBtn").addEventListener("click", () => {
-  try{
+  try {
     const canvas = createPng();
-    const dataUrl = canvas.toDataURL("image/png");
+    const filename =
+      `workout-${dateInput.value || localISODate()}-${sessionSelect.value}.png`;
 
-    const filename = `workout-${dateInput.value || localISODate()}-${sessionSelect.value}.png`;
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        alert("تعذر إنشاء ملف PNG.");
+        return;
+      }
 
-    const preview = document.getElementById("previewImage");
-    preview.src = dataUrl;
+      const imageURL = URL.createObjectURL(blob);
 
-    const saveLink = document.getElementById("saveImageLink");
-    saveLink.href = dataUrl;
-    saveLink.download = filename;
+      const preview = document.getElementById("previewImage");
+      preview.src = imageURL;
 
-    const openLink = document.getElementById("openImageLink");
-    openLink.href = dataUrl;
+      const saveLink = document.getElementById("saveImageLink");
+      saveLink.href = imageURL;
+      saveLink.download = filename;
 
-    document.getElementById("pngPreview").style.display = "block";
+      const openLink = document.getElementById("openImageLink");
+      openLink.href = imageURL;
+      openLink.target = "_blank";
 
-    // نحاول التنزيل تلقائيًا على المتصفحات التي تسمح بذلك.
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }catch(e){
-    alert("تعذر إنشاء الصورة على هذا المتصفح.");
+      document.getElementById("pngPreview").style.display = "block";
+    }, "image/png");
+
+  } catch (e) {
+    console.error(e);
+    alert("تعذر إنشاء الصورة.");
   }
 });
 </script>
