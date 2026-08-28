@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>سجل التمرين</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root{
+      --bg:#f6f6f4; --card:#fff; --text:#171717; --muted:#6b7280;
+      --line:#dedede; --accent:#111827; --ok:#edf8f0;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif
+    }
+    .wrap{max-width:980px;margin:auto;padding:18px}
+    .toolbar,.card{
+      background:var(--card);border:1px solid var(--line);
+      border-radius:16px;padding:16px;margin-bottom:14px
+    }
+    .head{
+      display:flex;justify-content:space-between;gap:14px;
+      align-items:flex-start;flex-wrap:wrap
+    }
+    h1{font-size:24px;margin:0 0 6px}
+    .date,.small,.target{color:var(--muted);font-size:13px}
+    .controls{
+      display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px
+    }
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    select,input,textarea,button{
+      font:inherit;border:1px solid #cfcfcf;border-radius:10px;
+      background:white;color:var(--text)
+    }
+    select,input{width:100%;height:44px;padding:8px 10px}
+    textarea{width:100%;min-height:70px;padding:10px;resize:vertical}
+    button{min-height:44px;padding:10px 16px;cursor:pointer}
+    .primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .summary{
+      display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);
+      font-size:14px;margin-top:12px
+    }
+    .exercise{padding:14px 0;border-top:1px solid var(--line)}
+    .exercise:first-child{border-top:0}
+    .exercise.done{
+      background:var(--ok);margin:0 -10px;padding:14px 10px;border-radius:12px
+    }
+    .exercise-top{
+      display:flex;align-items:center;gap:10px;
+      margin-bottom:12px;flex-wrap:wrap
+    }
+    .exercise-top input[type=checkbox]{width:22px;height:22px;flex:0 0 auto}
+    .exercise-name{font-weight:700;flex:1;min-width:220px}
+    .machine{font-weight:600;color:#444}
+    .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+    .grid.walk{grid-template-columns:repeat(5,1fr)}
+    .grid .wide{grid-column:span 2}
+    .field label{margin-bottom:4px}
+    .field select,.field input{height:40px}
+    .footer-fields{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:10px
+    }
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+    #report{background:var(--bg);padding:2px}
+    @media(max-width:760px){
+      .controls,.footer-fields{grid-template-columns:1fr}
+      .grid,.grid.walk{grid-template-columns:1fr 1fr}
+      .grid .wide{grid-column:span 2}
+      .exercise-name{min-width:160px}
+      h1{font-size:21px}
+      .wrap{padding:10px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="report">
+    <section class="toolbar">
+      <div class="head">
+        <div>
+          <h1>سجل التمرين</h1>
+          <div id="today" class="date"></div>
+        </div>
+        <div class="small">اختر الجلسة وسجّل النتائج ثم صدّر PNG</div>
+      </div>
+
+      <div class="controls">
+        <div>
+          <label for="session">نوع الجلسة</label>
+          <select id="session">
+            <option value="A">مقاومة A — جسم كامل</option>
+            <option value="B">مقاومة B — جسم كامل</option>
+            <option value="cardio">لياقة هوائية + مرونة</option>
+            <option value="recovery">استشفاء نشط</option>
+            <option value="rest">راحة / حركة خفيفة</option>
+          </select>
+        </div>
+        <div>
+          <label for="sessionDate">التاريخ</label>
+          <input id="sessionDate" type="date">
+        </div>
+      </div>
+
+      <div class="summary">
+        <span id="sessionTitle"></span>
+        <strong id="progress"></strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="exerciseList"></div>
+    </section>
+
+    <section class="card">
+      <div class="footer-fields">
+        <div class="field">
+          <label>مدة الجلسة الفعلية</label>
+          <select id="duration"></select>
+        </div>
+        <div class="field">
+          <label>الشدة العامة</label>
+          <select id="overallIntensity"></select>
+        </div>
+        <div class="field">
+          <label>الطاقة اليوم</label>
+          <select id="energy">
+            <option value="">—</option>
+            <option>منخفضة</option>
+            <option>عادية</option>
+            <option>جيدة</option>
+            <option>ممتازة</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label>ملاحظات الجلسة / ألم / شد / شيء غير معتاد</label>
+        <textarea id="sessionNotes" placeholder="مثال: شد في الترايسبس بعد المجموعة الثانية..."></textarea>
+      </div>
+    </section>
+  </div>
+
+  <div class="actions">
+    <button id="exportBtn" class="primary" type="button">تصدير PNG</button>
+    <button id="resetBtn" type="button">مسح بيانات الجلسة</button>
+  </div>
+</div>
+
+<script>
+const sessions = {
+  A: {title:"مقاومة A — جسم كامل", exercises:[
+    {name:"مشي على السير — إحماء", machine:"Treadmill", type:"walk", target:"8–10 دقائق"},
+    {name:"Vertical Chest Press Circular", machine:"#1 حسب الورقة", type:"strength", target:"2 × 10–12", defaultWeight:"15 كغ"},
+    {name:"Shoulder Press — قبضة محايدة", machine:"MH-033 / الورقة #30", type:"strength", target:"2 × 10–12", defaultWeight:"14 كغ"},
+    {name:"Lat Pulldown Convergent", machine:"MH-250", type:"strength", target:"2 × 10–12", defaultWeight:"20 كغ"},
+    {name:"Leg Curl", machine:"MH-476", type:"strength", target:"2 × 10–12", defaultWeight:"المستوى 3"},
+    {name:"Leg Extension", machine:"الرقم غير مثبت بعد", type:"strength", target:"2 × 10–12", defaultWeight:"15 كغ"},
+    {name:"Body Flex — Seven", machine:"—", type:"flex", target:"7–10 دقائق"}
+  ]},
+  B: {title:"مقاومة B — جسم كامل", exercises:[
+    {name:"مشي على السير — إحماء", machine:"Treadmill", type:"walk", target:"8–10 دقائق"},
+    {name:"Chest Fly / Pec Deck", machine:"MH-024 / الورقة #22", type:"strength", target:"2 × 10–12", defaultWeight:"19 كغ"},
+    {name:"Lateral Raise Machine", machine:"MH-036 / الورقة #35", type:"strength", target:"2 × 8–12", defaultWeight:"المستوى 4"},
+    {name:"Seated Row", machine:"MH-241", type:"strength", target:"2 × 10–12", defaultWeight:"17 كغ"},
+    {name:"Leg Curl", machine:"MH-476", type:"strength", target:"2 × 10–12", defaultWeight:"المستوى 3"},
+    {name:"Leg Extension", machine:"الرقم غير مثبت بعد", type:"strength", target:"2 × 10–12", defaultWeight:"15 كغ"},
+    {name:"Biceps Curl Machine", machine:"MH-211 / الورقة #212", type:"strength", target:"2 × 8–10", defaultWeight:"5 كغ"},
+    {name:"Rope Triceps Pressdown", machine:"Cable", type:"strength", target:"2 × 10", defaultWeight:"6.25 كغ"},
+    {name:"Body Flex — Seven", machine:"—", type:"flex", target:"7–10 دقائق"}
+  ]},
+  cardio: {title:"لياقة هوائية + مرونة", exercises:[
+    {name:"مشي — إحماء", machine:"Treadmill", type:"walk", target:"5 دقائق"},
+    {name:"مشي سريع / السير", machine:"Treadmill", type:"walk", target:"25–35 دقيقة"},
+    {name:"نط الحبل", machine:"—", type:"rope", target:"5 جولات × 30 ثانية"},
+    {name:"Body Flex — Seven", machine:"—", type:"flex", target:"10–15 دقيقة"}
+  ]},
+  recovery: {title:"استشفاء نشط", exercises:[
+    {name:"مشي مريح", machine:"Treadmill أو خارجي", type:"walk", target:"20–30 دقيقة"},
+    {name:"Body Flex — Seven", machine:"—", type:"flex", target:"10–15 دقيقة"}
+  ]},
+  rest: {title:"راحة / حركة خفيفة", exercises:[
+    {name:"مشي اختياري", machine:"Treadmill أو خارجي", type:"walk", target:"0–30 دقيقة"},
+    {name:"Body Flex اختياري", machine:"—", type:"flex", target:"7–10 دقائق"}
+  ]}
+};
+
+const intensity = ["","سهلة جدًا","سهلة","خفيفة إلى متوسطة","متوسطة","متوسطة إلى شديدة","شديدة","قريبة من الفشل"];
+const sets = ["","1","2","3","4","5"];
+const reps = ["","5","6","7","8","9","10","11","12","13","14","15","16","18","20"];
+const weightValues = ["","2.5","5","6.25","7.5","10","12","12.5","14","15","17","17.5","19","20","22.5","25","27.5","30","32.5","35","40","45","50"];
+const levels = ["","المستوى 1","المستوى 2","المستوى 3","المستوى 4","المستوى 5","المستوى 6","المستوى 7","المستوى 8","المستوى 9","المستوى 10"];
+const walkMinutes = ["","5","8","10","12","15","20","25","30","35","40","45","50","60"];
+const speeds = ["","2.5","3","3.5","4","4.5","5","5.5","6","6.5","7"];
+const inclines = ["","0","0.5","1","1.5","2","2.5","3","4","5","6","8","10","12"];
+const distances = ["","0.5","1","1.5","2","2.5","3","3.5","4","5","6","7","8","10"];
+const flexMinutes = ["","5","7","10","12","15","20"];
+const ropeRounds = ["","3","4","5","6","7","8","10"];
+const ropeSeconds = ["","20","30","40","45","60"];
+const rests = ["","30","45","60","75","90","120"];
+
+function options(arr, suffix=""){
+  return arr.map(v => `<option value="${v}">${v ? v + suffix : "—"}</option>`).join("");
+}
+
+function strengthFields(ex){
+  const isLevel = (ex.defaultWeight || "").includes("المستوى");
+  return `
+    <div class="grid">
+      <div class="field"><label>المجموعات</label><select class="sets">${options(sets)}</select></div>
+      <div class="field"><label>العدات</label><select class="reps">${options(reps)}</select></div>
+      <div class="field"><label>${isLevel ? "المستوى" : "الوزن"}</label>
+        <select class="weight">${isLevel ? options(levels) : options(weightValues," كغ")}</select></div>
+      <div class="field"><label>الشدة</label><select class="intensity">${options(intensity)}</select></div>
+      <div class="field wide"><label>ملاحظة سريعة</label>
+        <select class="note">
+          <option value="">—</option>
+          <option>كل العدات سهلة</option>
+          <option>كل العدات متوسطة</option>
+          <option>آخر عدتين صعبتان</option>
+          <option>آخر 3–4 عدات صعبة</option>
+          <option>قريب من الفشل</option>
+          <option>تكنيك غير ثابت</option>
+          <option>شد عضلي طبيعي</option>
+          <option>ألم غير طبيعي</option>
+        </select>
+      </div>
+    </div>`;
+}
+
+function walkFields(){
+  return `
+    <div class="grid walk">
+      <div class="field"><label>المدة</label><select class="walkMinutes">${options(walkMinutes," د")}</select></div>
+      <div class="field"><label>السرعة km/h</label><select class="speed">${options(speeds)}</select></div>
+      <div class="field"><label>الميل %</label><select class="incline">${options(inclines)}</select></div>
+      <div class="field"><label>المسافة km</label><select class="distance">${options(distances)}</select></div>
+      <div class="field"><label>الشدة</label><select class="intensity">${options(intensity)}</select></div>
+    </div>`;
+}
+
+function flexFields(){
+  return `
+    <div class="grid">
+      <div class="field"><label>المدة</label><select class="flexMinutes">${options(flexMinutes," د")}</select></div>
+      <div class="field"><label>الشدة</label><select class="intensity">${options(intensity)}</select></div>
+      <div class="field wide"><label>الإحساس</label>
+        <select class="note">
+          <option value="">—</option>
+          <option>سهل جدًا</option>
+          <option>بعض الحركات سهلة وبعضها صعبة</option>
+          <option>شد مريح</option>
+          <option>مدى الحركة محدود</option>
+          <option>تحسن واضح</option>
+          <option>ألم — توقفت</option>
+        </select>
+      </div>
+    </div>`;
+}
+
+function ropeFields(){
+  return `
+    <div class="grid">
+      <div class="field"><label>الجولات</label><select class="rounds">${options(ropeRounds)}</select></div>
+      <div class="field"><label>العمل / الجولة</label><select class="ropeSeconds">${options(ropeSeconds," ث")}</select></div>
+      <div class="field"><label>الراحة</label><select class="rest">${options(rests," ث")}</select></div>
+      <div class="field"><label>الشدة</label><select class="intensity">${options(intensity)}</select></div>
+      <div class="field"><label>الإحساس</label>
+        <select class="note">
+          <option value="">—</option>
+          <option>سهل</option>
+          <option>متوسط</option>
+          <option>صعب</option>
+          <option>تعب بالساق</option>
+          <option>انزعاج بالركبة</option>
+          <option>تكنيك غير ثابت</option>
+        </select>
+      </div>
+    </div>`;
+}
+
+const list = document.getElementById("exerciseList");
+const sessionSelect = document.getElementById("session");
+const sessionTitle = document.getElementById("sessionTitle");
+const progress = document.getElementById("progress");
+const dateInput = document.getElementById("sessionDate");
+
+let currentTotal = 0;
+
+function localISODate(d=new Date()){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+dateInput.value = localISODate();
+
+function formatArabicDate(v){
+  if(!v) return "";
+  const [y,m,d] = v.split("-").map(Number);
+  return new Intl.DateTimeFormat("ar-KW",{
+    weekday:"long",year:"numeric",month:"long",day:"numeric"
+  }).format(new Date(y,m-1,d));
+}
+
+function updateDate(){
+  document.getElementById("today").textContent = formatArabicDate(dateInput.value);
+}
+dateInput.addEventListener("change", updateDate);
+updateDate();
+
+document.getElementById("duration").innerHTML =
+  options(["","20","30","40","45","50","55","60","65","70","75","80","90","100","120"]," د");
+document.getElementById("overallIntensity").innerHTML = options(intensity);
+
+function updateProgress(){
+  const doneCount = list.querySelectorAll('input.done:checked').length;
+  progress.textContent = `المنجز: ${doneCount} / ${currentTotal}`;
+}
+
+function render(){
+  const s = sessions[sessionSelect.value];
+  sessionTitle.textContent = s.title;
+
+  list.innerHTML = "";
+  currentTotal = s.exercises.length;   // العدد الكلي يُحسب مرة واحدة عند اختيار الجلسة
+
+  s.exercises.forEach(ex => {
+    const div = document.createElement("div");
+    div.className = "exercise";
+
+    const body =
+      ex.type === "strength" ? strengthFields(ex) :
+      ex.type === "walk" ? walkFields() :
+      ex.type === "flex" ? flexFields() :
+      ropeFields();
+
+    div.innerHTML = `
+      <div class="exercise-top">
+        <input type="checkbox" class="done" aria-label="تم إنجاز ${ex.name}">
+        <div class="exercise-name">${ex.name} <span class="machine">(${ex.machine})</span></div>
+        <div class="target">الهدف: ${ex.target}${ex.defaultWeight ? " — " + ex.defaultWeight : ""}</div>
+      </div>
+      ${body}
+    `;
+
+    const cb = div.querySelector(".done");
+    cb.addEventListener("change", () => {
+      div.classList.toggle("done", cb.checked);
+      updateProgress();               // يغيّر المنجز فقط، ولا يغيّر currentTotal
+    });
+
+    if(ex.type === "strength"){
+      div.querySelector(".sets").value = "2";
+
+      if(ex.target.includes("10–12")) div.querySelector(".reps").value = "12";
+      else if(ex.target.includes("8–10")) div.querySelector(".reps").value = "10";
+
+      if(ex.defaultWeight){
+        const w = div.querySelector(".weight");
+        if(ex.defaultWeight.includes("المستوى")){
+          w.value = ex.defaultWeight;
+        } else {
+          w.value = ex.defaultWeight.replace(" كغ","");
+        }
+      }
+    }
+
+    list.appendChild(div);
+  });
+
+  updateProgress();
+}
+
+sessionSelect.addEventListener("change", render);
+render();
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if(!confirm("مسح جميع بيانات الجلسة الحالية؟")) return;
+
+  render();
+  document.getElementById("duration").value = "";
+  document.getElementById("overallIntensity").value = "";
+  document.getElementById("energy").value = "";
+  document.getElementById("sessionNotes").value = "";
+});
+
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("exportBtn");
+  btn.disabled = true;
+  btn.textContent = "جارٍ إنشاء الصورة...";
+
+  try{
+    const canvas = await html2canvas(document.getElementById("report"),{
+      scale: Math.min(window.devicePixelRatio || 2, 2.5),
+      backgroundColor:"#f6f6f4",
+      useCORS:true,
+      logging:false
+    });
+
+    const a = document.createElement("a");
+    a.download = `workout-${dateInput.value || localISODate()}-${sessionSelect.value}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  }catch(e){
+    alert("تعذر تصدير PNG. تأكد من اتصال الإنترنت ثم أعد المحاولة.");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "تصدير PNG";
+  }
+});
+</script>
+</body>
+</html>
